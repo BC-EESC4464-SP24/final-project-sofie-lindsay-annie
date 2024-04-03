@@ -10,9 +10,9 @@ windu = ncread(filename,'u10');
 windv = ncread(filename,'v10');
 
 totalwindspeed = sqrt((windu .* windu) + (windv .* windv));
-%need to switch lat/lon
-windlat = double(ncread(filename,'latitude'));
-windlon = double(ncread(filename,'longitude'));
+
+windlat = ncread(filename,'latitude');
+windlon = ncread(filename,'longitude');
 
 % data1 = sortrows(data1);
 lat = table2array(data1(:,3));
@@ -25,7 +25,7 @@ netgen = table2array(data1(:,6));
 figure(1); clf
 usamap conus
 geoshow('landareas.shp','FaceColor','#77AC30')
-contourfm(windlat,windlon,totalwindspeed(:,:,1))
+contourfm()
 %plotm(lat,lon,'m.','MarkerSize',15)
 scatterm(lat,lon,netgen,'filled')
 
