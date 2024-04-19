@@ -53,6 +53,8 @@ usamap conus
 geoshow('landareas.shp','FaceColor','#77AC30')
 plotm(plantLat,plantLon,'m.','MarkerSize',15)
 
+% plot max wind speed point in a different color (?)
+
 %plot net generation at each location by size
 %scatterm(plantLat,plantLon,netgen,'filled')
 
@@ -72,9 +74,42 @@ ylabel("Longitude")
 zlabel("Ratio")
 
 %% Max Wind Speed
-%finish later
 meanWS = mean(totalWindSpeed, 3);
-MaxWS = meanWS == max(meanWS);
-idxMaxWS = find(meanWS == MaxWS);
+actualMaxWS = max(meanWS, [], "all");
+MaxWS = meanWS == actualMaxWS;
+[row, col] = find(MaxWS);
+idxLat = windLat(row);
+idxLon = windLon(col);
+months = totalWindSpeed(row, col, :);
 
+%% Plot Max Wind Speed Location
+figure(4); clf
+usamap conus
+geoshow('landareas.shp','FaceColor','#77AC30')
+plotm(idxLat,idxLon,'m.','MarkerSize',15)
 
+%% Compare Wind to Generation
+
+%extract wind speed at each plant location
+windSpeed = NaN(430, 1);
+for i = 1:430
+    diff_lat = abs(plantLat(i) - windLat);
+    diff_lon = abs(plantLon(i) - windLon);
+    min_lon = min(diff_lon);
+    min_lat = min(diff_lat);
+    indlon = find(diff_lon == min_lon);
+    indlat = find(diff_lat == min_lat);
+    indlon = indlon(1);
+    indlat = indlat(1);
+    windSpeed(i) = totalWindSpeed(indlat, indlon);
+end
+
+%find number of turbines
+numTurbines = NaN(430, 1);
+for i = 1:430
+    plantCode = table2array(plant_data(i, 1));
+    turbineCodes = table2array(turbine_data(:, 4));
+    numTurbines(i) = length(find(turbineCodes == plantCode));
+end
+
+dataTable = [plantLat plantLon netgen windSpeed numTurbines];
