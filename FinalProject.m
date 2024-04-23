@@ -8,7 +8,7 @@ plant_data = readtable("millerkeith2018data1.csv");
 %reading in data to match the individual wind turbines to the power plants
 turbine_data = readtable("millerkeith2018data2.csv");
 %reading in wind speed data
-filename = 'data.nc'
+filename = '2023windUS'
 ncdisp(filename);
 
 %DATA1
@@ -25,7 +25,7 @@ windu = ncread(filename,'u10');
 windv = ncread(filename,'v10');
 %% Calculate wind speed
 %lon x lat x day
-windspeed = sqrt((windu .* windu) + (windv .* windv));
+windComponents = sqrt((windu .* windu) + (windv .* windv));
 windLat = double(ncread(filename,'latitude'));
 windLon = double(ncread(filename,'longitude'));
 
@@ -73,25 +73,10 @@ xlabel("Latitude")
 ylabel("Longitude")
 zlabel("Ratio")
 
-%% Max Wind Speed
-meanWS = mean(totalWindSpeed, 3);
-actualMaxWS = max(meanWS, [], "all");
-MaxWS = meanWS == actualMaxWS;
-[row, col] = find(MaxWS);
-idxLat = windLat(row);
-idxLon = windLon(col);
-months = totalWindSpeed(row, col, :);
-
-%% Plot Max Wind Speed Location
-figure(4); clf
-usamap conus
-geoshow('landareas.shp','FaceColor','#77AC30')
-plotm(idxLat,idxLon,'m.','MarkerSize',15)
-
 %% Compare Wind to Generation
 
 %extract wind speed at each plant location
-windSpeed = NaN(430, 1);
+windSpeed = NaN(430, 12);
 for i = 1:430
     diff_lat = abs(plantLat(i) - windLat);
     diff_lon = abs(plantLon(i) - windLon);
@@ -101,8 +86,12 @@ for i = 1:430
     indlat = find(diff_lat == min_lat);
     indlon = indlon(1);
     indlat = indlat(1);
-    windSpeed(i) = totalWindSpeed(indlat, indlon);
+    windSpeed(i,:) = totalWindSpeed(indlat, indlon,:);
 end
+
+%find mean wind speed
+meanWS = mean(windSpeed, 2);
+windSpeed = [windSpeed meanWS];
 
 %find number of turbines
 numTurbines = NaN(430, 1);
@@ -113,3 +102,52 @@ for i = 1:430
 end
 
 dataTable = [plantLat plantLon netgen windSpeed numTurbines];
+%colnames = {"Latitude", "Longitude", "NetGen", "WS JAN", "WS FEB", "WS MAR", "WS APR", "WS MAY", "WS JUN", "WS JUL", "WS AUG", "WS SEPT", "WS OCT", "WS NOV", "WS DEC", "meanWS", "numTurbines"};
+%c = array2table(dataTable);
+%c.Properties.VariableNames = colnames;
+
+%single Turbine
+turbgen = dataTable(:, 3)./ dataTable(:, 17);
+modelInfo = [dataTable(:, 16) turbgen];
+%% Linear Regression for TurbGen & WS
+modelTable = array2table(modelInfo);
+modelTable2 = rmmissing(modelTable);
+X = table2array(modelTable2(:, 1));
+y = table2array(modelTable2(:, 2));
+model = fitlm(X, y, "Intercept", false)
+yPred = predict(model, X);
+
+%% Plot relationship between TurbGen & WS
+figure(4); clf
+plot(X, y, 'o');
+xlabel("WS");
+ylabel("Turbine Gen");
+legend();
+%% Linear Regression for NetGen & Capacity
+% modelTable = array2table(modelInfo);
+% modelTable2 = rmmissing(modelTable);
+% X = table2array(modelTable2(:, 1));
+% y = table2array(modelTable2(:, 2));
+X = capacity;
+y = netgen;
+model = fitlm(X, y, "Intercept", false)
+yPred = predict(model, X);
+
+%% Plot relationship between NetGen & Capacity
+figure(4); clf
+plot(X, y, 'o', X, yPred, '--');
+xlabel("capacity");
+ylabel("Net Gen");
+legend();
+%% Find Max Wind Speed
+maxWS = max(dataTable(:,16));
+row = find(dataTable(:, 16) == maxWS);
+indices = dataTable(row, 1:2);
+idxLat = indices(1);
+idxLon = indices(2);
+
+%% Plot Max Wind Speed Location
+figure(5); clf
+usamap conus
+geoshow('landareas.shp','FaceColor','#77AC30')
+plotm(idxLat,idxLon,'m.','MarkerSize',15)
