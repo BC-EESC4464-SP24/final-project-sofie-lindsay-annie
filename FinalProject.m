@@ -8,8 +8,10 @@ plant_data = readtable("millerkeith2018data1.csv");
 %reading in data to match the individual wind turbines to the power plants
 turbine_data = readtable("millerkeith2018data2.csv");
 %reading in wind speed data
-filename = '2023windUS'
+filename = 'wind2018.nc'
 ncdisp(filename);
+%reading in mechanics data
+mechanics_data = readtable("uswtdb.csv");
 
 %DATA1
 %Plant Code: used to link to electricity generation
@@ -114,14 +116,14 @@ modelTable = array2table(modelInfo);
 modelTable2 = rmmissing(modelTable);
 X = table2array(modelTable2(:, 1));
 y = table2array(modelTable2(:, 2));
-model = fitlm(X, y, "Intercept", false)
+model = fitrsvm(X, y)
 yPred = predict(model, X);
 
 %% Plot relationship between TurbGen & WS
 figure(4); clf
-plot(X, y, 'o');
-xlabel("WS");
-ylabel("Turbine Gen");
+plot(X, y, 'o', X, yPred, "x");
+xlabel("Annual Mean Wind Speed");
+ylabel("Power Generation for Individual Turbines");
 legend();
 %% Linear Regression for NetGen & Capacity
 % modelTable = array2table(modelInfo);
@@ -136,8 +138,8 @@ yPred = predict(model, X);
 %% Plot relationship between NetGen & Capacity
 figure(4); clf
 plot(X, y, 'o', X, yPred, '--');
-xlabel("capacity");
-ylabel("Net Gen");
+xlabel("Installed Capacity");
+ylabel("Net Generation");
 legend();
 %% Find Max Wind Speed
 maxWS = max(dataTable(:,16));
@@ -151,3 +153,30 @@ figure(5); clf
 usamap conus
 geoshow('landareas.shp','FaceColor','#77AC30')
 plotm(idxLat,idxLon,'m.','MarkerSize',15)
+
+%% Mechanics
+
+mechanics_rd = table2array(mechanics_data(:, 16));
+mechanics_hh = table2array(mechanics_data(:, 17));
+mechanics_codes = table2array(mechanics_data(:, 5));
+plantCodes = table2array(plant_data(:, 1));
+
+mech_rd = NaN(length(plantCodes),1);
+mech_hh = NaN(length(plantCodes),1);
+
+for i = 1:length(plantCodes)
+    index = find(plantCodes(i) == mechanics_codes);
+    mech_rd(i) = nanmean(mechanics_rd(index));
+    mech_hh(i) = nanmean(mechanics_hh(index));
+end
+
+finalTable = [plantLat plantLon netgen windSpeed numTurbines mech_rd mech_hh];
+
+%% Regression
+X = [meanWS, mech_rd, mech_hh];
+model = fitrsvm(X, netgen)
+yPred = predict(model, netgen);
+
+%% Plot relationship
+figure(6); clf
+scatter(mech_rd, meanWS);
