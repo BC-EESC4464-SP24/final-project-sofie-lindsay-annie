@@ -13,15 +13,6 @@ ncdisp(filename);
 %reading in mechanics data
 mechanics_data = readtable("uswtdb.csv");
 
-%DATA1
-%Plant Code: used to link to electricity generation
-%InstCapMWi: installed capacity (MW) from EIA Power Plants
-%AreaKM2: total area of the wind plant
-%NetGENe_2016_MWe:net electricity generation
-
-%DATA2
-%Plant Code: spatially matched wind power plant from data1
-
 %read in wind components
 windu = ncread(filename,'u10');
 windv = ncread(filename,'v10');
@@ -32,7 +23,7 @@ windLat = double(ncread(filename,'latitude'));
 windLon = double(ncread(filename,'longitude'));
 
 %need to switch lat/lon
-totalWindSpeed = permute(windspeed, [2 1 3]);
+totalWindSpeed = permute(windComponents, [2 1 3]);
 
 %% Extract lat, lon, netgen, & capacity
 plantLat = table2array(plant_data(:,3));
@@ -43,12 +34,17 @@ capacity = table2array(plant_data(:,4));
 %% Create maps
 figure(1); clf
 usamap conus
-geoshow('landareas.shp','FaceColor','#77AC30')
+geoshow('landareas.shp')
 %plot windspeed as background
 step = 50;
-colorbar;
-contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 25)
-
+bar = colorbar;
+title(bar, "Wind Speed (m/s)")
+contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
+hold on
+plotm(plantLat,plantLon,'y.','MarkerSize',10)
+hold on
+plotm(idxLat,idxLon,'r.','MarkerSize',15)
+title("Plant Locations and Wind Speed (10m)")
 %% plot locations
 figure(2); clf
 usamap conus
@@ -102,42 +98,41 @@ for i = 1:430
     turbineCodes = table2array(turbine_data(:, 4));
     numTurbines(i) = length(find(turbineCodes == plantCode));
 end
+%% meanWS correction
+correctMeanWS = meanWS .* (mech_hh/10).^0.143;
 
+figure(7); clf
+scatter(meanWS, correctMeanWS)
+hold on
+plot(meanWS, meanWS)
+xlabel("Actual meanWS");
+ylabel("correctMeanWS");
 dataTable = [plantLat plantLon netgen windSpeed numTurbines];
-%colnames = {"Latitude", "Longitude", "NetGen", "WS JAN", "WS FEB", "WS MAR", "WS APR", "WS MAY", "WS JUN", "WS JUL", "WS AUG", "WS SEPT", "WS OCT", "WS NOV", "WS DEC", "meanWS", "numTurbines"};
-%c = array2table(dataTable);
-%c.Properties.VariableNames = colnames;
 
+%% Linear Regression for TurbGen & WS
 %single Turbine
 turbgen = dataTable(:, 3)./ dataTable(:, 17);
 modelInfo = [dataTable(:, 16) turbgen];
-%% Linear Regression for TurbGen & WS
 modelTable = array2table(modelInfo);
 modelTable2 = rmmissing(modelTable);
-X = table2array(modelTable2(:, 1));
-y = table2array(modelTable2(:, 2));
-model = fitrsvm(X, y)
-yPred = predict(model, X);
+MWS = table2array(modelTable2(:, 1));
+Powergen = table2array(modelTable2(:, 2));
+model = fitrsvm(MWS, Powergen)
+yPred = predict(model, MWS);
 
 %% Plot relationship between TurbGen & WS
 figure(4); clf
-plot(X, y, 'o', X, yPred, "x");
+plot(MWS, Powergen, 'o', MWS, yPred, "x");
 xlabel("Annual Mean Wind Speed");
 ylabel("Power Generation for Individual Turbines");
 legend();
 %% Linear Regression for NetGen & Capacity
-% modelTable = array2table(modelInfo);
-% modelTable2 = rmmissing(modelTable);
-% X = table2array(modelTable2(:, 1));
-% y = table2array(modelTable2(:, 2));
-X = capacity;
-y = netgen;
-model = fitlm(X, y, "Intercept", false)
-yPred = predict(model, X);
+model = fitlm(capacity, netgen, "Intercept", false)
+yPred = predict(model, capacity);
 
 %% Plot relationship between NetGen & Capacity
 figure(4); clf
-plot(X, y, 'o', X, yPred, '--');
+plot(capacity, netgen, 'o', capacity, yPred, '--');
 xlabel("Installed Capacity");
 ylabel("Net Generation");
 legend();
@@ -158,6 +153,7 @@ plotm(idxLat,idxLon,'m.','MarkerSize',15)
 
 mechanics_rd = table2array(mechanics_data(:, 16));
 mechanics_hh = table2array(mechanics_data(:, 17));
+mechanics_rsa = table2array(mechanics_data(:, 18));
 mechanics_codes = table2array(mechanics_data(:, 5));
 plantCodes = table2array(plant_data(:, 1));
 
@@ -168,15 +164,37 @@ for i = 1:length(plantCodes)
     index = find(plantCodes(i) == mechanics_codes);
     mech_rd(i) = nanmean(mechanics_rd(index));
     mech_hh(i) = nanmean(mechanics_hh(index));
+    mech_rsa(i) = nanmean(mechanics_rsa(index));
 end
 
-finalTable = [plantLat plantLon netgen windSpeed numTurbines mech_rd mech_hh];
+finalTable = [plantLat plantLon netgen windSpeed numTurbines mech_rd mech_hh mech_rsa'];
 
 %% Regression
-X = [meanWS, mech_rd, mech_hh];
-model = fitrsvm(X, netgen)
-yPred = predict(model, netgen);
+variables = [correctMeanWS, mech_rd, mech_hh netgen];
+table = rmmissing(variables);
+predictors = table(:, 1:3);
+y = table(:, 4);
+NN = fitrnet(predictors, y, 'Standardize',true, "Activations", 'relu',  'InitialStepSize','auto', 'LayerSizes',[115 100 75 50 25], 'Lambda',1e-4)
+yPred = predict(NN, predictors);
 
 %% Plot relationship
 figure(6); clf
-scatter(mech_rd, meanWS);
+scatter(y, yPred)
+hold on
+plot(y,y)
+xlabel("Actual");
+ylabel("Prediction");
+
+%% Plot
+figure(7); clf
+scatter3(table(:,2), y, yPred)
+%plot(table(:, 3), y, 'o', table(:, 3), yPred, "x");
+
+%% Theoretical Power (Equation)
+%standard density of air = 1.225
+meanWScubed = meanWS.^3;
+theoretical_power = (1/2 * 1.225 * mech_rsa') .* meanWScubed;
+figure(7); clf
+scatter(netgen, theoretical_power)
+xlabel("Actual");
+ylabel("Prediction");
