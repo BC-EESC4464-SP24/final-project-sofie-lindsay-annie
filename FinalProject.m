@@ -132,23 +132,39 @@ bar = colorbar;
 title(bar, "MW")
 title('Net Electricity Generation (MW) at Each Plant Location') 
 
-%% Linear Regression for TurbGen & WS
-%single Turbine
+%% Plot relationships
+
 turbgen = dataTable(:, 3)./ dataTable(:, 17);
-modelInfo = [dataTable(:, 16) turbgen];
+modelInfo = [dataTable(:, 16) turbgen mech_hh mech_rd];
 modelTable = array2table(modelInfo);
 modelTable2 = rmmissing(modelTable);
 MWS = table2array(modelTable2(:, 1));
 Powergen = table2array(modelTable2(:, 2));
-model = fitrsvm(MWS, Powergen)
-yPred = predict(model, MWS);
+Mech_hh = table2array(modelTable2(:, 3));
+Mech_rd = table2array(modelTable2(:, 4));
 
-%% Plot relationship between TurbGen & WS
+% Plot relationship between TurbGen & WS
 figure(5); clf
-plot(MWS, Powergen, 'o', MWS, yPred, "x");
-xlabel("Annual Mean Wind Speed");
-ylabel("Power Generation for Individual Turbines");
-legend();
+
+subplot(1, 3, 1)
+scatter(MWS, Powergen)
+title("Power Generation vs. Annual Mean Wind Speed")
+xlabel("Annual Mean Wind Speed (m/s)");
+ylabel("Electricity Generation for Individual Turbines (MW)");
+hold on
+
+subplot(1, 3, 2) 
+scatter(Mech_hh, Powergen)
+title("Power Generation vs. Hub Height")
+xlabel("Hub Height (m)");
+ylabel("Electricity Generation for Individual Turbines (MW)");
+
+subplot(1, 3, 3)
+scatter(Mech_rd, Powergen)
+title("Power Generation vs. Rotor Diameter")
+xlabel("Rotor Diameter (m)");
+ylabel("Electricity Generation for Individual Turbines (MW)");
+
 %% Linear Regression for NetGen & Capacity
 model = fitlm(capacity, netgen, "Intercept", false)
 yPred = predict(model, capacity);

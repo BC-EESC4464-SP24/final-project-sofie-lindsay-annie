@@ -128,42 +128,30 @@ figure(4); clf
 usamap([25 50], [-125 -65]) 
 geoshow('landareas.shp','FaceColor','#77AC30')
 scatterm(plantLat, plantLon, [], netgen, 'filled') 
-colorbar; 
-hold on
-plotm(idxLat,idxLon,'r.','MarkerSize',15)
-title('Net Generation at Each Location') 
-
-%% EXP
-figure(); clf
-usamap([25 50], [-125 -65]) 
-geoshow('landareas.shp')
-colormap('parula');
-step = 50;
 bar = colorbar;
-title(bar, "Wind Speed (m/s)")
-contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
-hold on
-plotm(idxLat,idxLon,'r.','MarkerSize',15)
-hold on
-scatterm(plantLat, plantLon, [], netgen, 'filled')
+title(bar, "MW")
+title('Net Electricity Generation (MW) at Each Plant Location') 
 
 %% Linear Regression for TurbGen & WS
 %single Turbine
 turbgen = dataTable(:, 3)./ dataTable(:, 17);
-modelInfo = [dataTable(:, 16) turbgen];
+modelInfo = [dataTable(:, 16) turbgen mech_hh mech_rd];
 modelTable = array2table(modelInfo);
 modelTable2 = rmmissing(modelTable);
 MWS = table2array(modelTable2(:, 1));
 Powergen = table2array(modelTable2(:, 2));
-model = fitrsvm(MWS, Powergen)
-yPred = predict(model, MWS);
 
 %% Plot relationship between TurbGen & WS
 figure(5); clf
-plot(MWS, Powergen, 'o', MWS, yPred, "x");
-xlabel("Annual Mean Wind Speed");
-ylabel("Power Generation for Individual Turbines");
-legend();
+scatter(MWS, Powergen)
+xlabel("Annual Mean Wind Speed (m/s)");
+ylabel("Electricty Generation for Individual Turbines (MW)");
+title("Relationship between Individual Turbine Electricty Generation & Annual Mean Wind Speed")
+hold on
+scatter(MWS, mech_hh)
+hold on
+scatter(MWS, mech_rd)
+
 %% Linear Regression for NetGen & Capacity
 model = fitlm(capacity, netgen, "Intercept", false)
 yPred = predict(model, capacity);
