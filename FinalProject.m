@@ -25,43 +25,12 @@ windLon = double(ncread(filename,'longitude'));
 %need to switch lat/lon
 totalWindSpeed = permute(windComponents, [2 1 3]);
 
+
 %% Extract lat, lon, netgen, & capacity
 plantLat = table2array(plant_data(:,3));
 plantLon = table2array(plant_data(:,2));
 netgen = table2array(plant_data(:,6));
 capacity = table2array(plant_data(:,4));
-
-%% plot windspeed as background
-figure(1); clf
-usamap([25 50], [-125 -65]) 
-geoshow('landareas.shp')
-
-step = 5;
-bar = colorbar;
-title(bar, "Wind Speed (m/s)")
-contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
-hold on
-plotm(plantLat,plantLon,'y.','MarkerSize',10)
-hold on
-plotm(idxLat,idxLon,'r.','MarkerSize',15)
-title("Plant Locations and Wind Speed (10m)")
-%% plot net generation at each location by size
-figure(2); clf
-usamap([25 50], [-125 -65]) 
-geoshow('landareas.shp','FaceColor','#77AC30')
-scatterm(plantLat,plantLon,netgen,'filled')
-
-%or plot markers in different colors according to generation
-figure(3); clf
-usamap([25 50], [-125 -65]) 
-geoshow('landareas.shp','FaceColor','#77AC30')
-
-% Plot markers with colors according to generation
-scatterm(plantLat, plantLon, [], netgen, 'filled') 
-
-colorbar; % Add colorbar
-title('Net Generation at Each Location') 
-
 
 %% Ratio of Capacity and Generation
 ratio = netgen ./ capacity;
@@ -70,7 +39,7 @@ ratioTable = [plantLat plantLon ratio];
 maxLocation = ratioTable(215, :);
 
 %% Plot Ratio
-figure(2); clf
+figure(1); clf
 scatter3(plantLat, plantLon, ratio)
 xlabel("Latitude")
 ylabel("Longitude")
@@ -124,7 +93,7 @@ correctMeanWS = meanWS .* (mech_hh/10).^0.143;
 windSpeed = [windSpeed correctMeanWS];
 
 %plot the difference
-figure(3); clf
+figure(2); clf
 scatter(meanWS, correctMeanWS)
 hold on
 plot(meanWS, meanWS)
@@ -132,6 +101,36 @@ xlabel("Actual meanWS");
 ylabel("correctMeanWS");
 
 dataTable = [plantLat plantLon netgen windSpeed numTurbines];
+
+%% Find Max Wind Speed
+maxWS = max(dataTable(:,16));
+row = find(dataTable(:, 16) == maxWS);
+indices = dataTable(row, 1:2);
+idxLat = indices(1);
+idxLon = indices(2);
+
+%% plot windspeed as background
+figure(3); clf
+usamap([25 50], [-125 -65]) 
+geoshow('landareas.shp')
+
+step = 50;
+bar = colorbar;
+title(bar, "Wind Speed (m/s)")
+contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
+hold on
+plotm(plantLat,plantLon,'y.','MarkerSize',10)
+hold on
+plotm(idxLat,idxLon,'r.','MarkerSize',15)
+title("Plant Locations and Wind Speed (10m)")
+%% plot markers in different colors according to generation
+figure(4); clf
+usamap([25 50], [-125 -65]) 
+geoshow('landareas.shp','FaceColor','#77AC30')
+scatterm(plantLat, plantLon, [], netgen, 'filled') 
+bar = colorbar;
+title(bar, "MW")
+title('Net Electricity Generation (MW) at Each Plant Location') 
 
 %% Linear Regression for TurbGen & WS
 %single Turbine
@@ -145,7 +144,7 @@ model = fitrsvm(MWS, Powergen)
 yPred = predict(model, MWS);
 
 %% Plot relationship between TurbGen & WS
-figure(4); clf
+figure(5); clf
 plot(MWS, Powergen, 'o', MWS, yPred, "x");
 xlabel("Annual Mean Wind Speed");
 ylabel("Power Generation for Individual Turbines");
@@ -155,17 +154,11 @@ model = fitlm(capacity, netgen, "Intercept", false)
 yPred = predict(model, capacity);
 
 %% Plot relationship between NetGen & Capacity
-figure(5); clf
+figure(6); clf
 plot(capacity, netgen, 'o', capacity, yPred, '--');
 xlabel("Installed Capacity");
 ylabel("Net Generation");
 legend();
-%% Find Max Wind Speed
-maxWS = max(dataTable(:,16));
-row = find(dataTable(:, 16) == maxWS);
-indices = dataTable(row, 1:2);
-idxLat = indices(1);
-idxLon = indices(2);
 
 %% Regression
 variables = [correctMeanWS, mech_rd, mech_hh netgen];
