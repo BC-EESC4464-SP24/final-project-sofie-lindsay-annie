@@ -192,22 +192,39 @@ num2str(MAE)
 
 %% Plot relationship
 figure(7); clf
-scatter(y, yPred)
+scatter(yPred, y)
 hold on
 plot(y,y)
-legend("Actual", "Neural Network Prediction");
-xlabel("Actual Net Electricity Generation (MW)");
-ylabel("Predicted Net Electricity Generation (MW)");
+legend("Neural Network Prediction", "Actual");
+ylabel("Actual Net Electricity Generation (MW)");
+xlabel("Predicted Net Electricity Generation (MW)");
 title("Accuracy of Predicted Net Electricity Generation using a Neural Network")
 eq_text = "Mean Absolute Error: " + num2str(MAE);
 text(0.7, 0.9, eq_text, 'Units', 'normalized', 'FontSize', 12, 'Color', "#A2142F");
 
+%%
+figure(7); clf
+subplot(1, 2, 1)
+scatter(yPred, y)
+hold on
+plot(y,y)
+legend("Neural Network Prediction", "Actual");
+ylabel("Actual Net Electricity Generation (MW)");
+xlabel("Predicted Net Electricity Generation (MW)");
+title("Accuracy of Predicted Net Electricity Generation using a Neural Network")
+eq_text = "Mean Absolute Error: " + num2str(MAE);
+text(0.7, 0.9, eq_text, 'Units', 'normalized', 'FontSize', 12, 'Color', "#A2142F");
 
-%% Theoretical Power (Equation)
-%standard density of air = 1.225
+new_mech_rsa = (mech_rd * 1/2).^2 * pi;
+
 meanWScubed = correctMeanWS.^3;
-theoretical_power = (1/2 * 1.225 * mech_rsa') .* meanWScubed;
-figure(8); clf
-scatter(netgen, theoretical_power)
-xlabel("netgen");
-ylabel("theoretical_power");
+theoretical_power = (1/2 * 1.225 * new_mech_rsa) .* meanWScubed * 0.06;
+subplot(1, 2, 2)
+scatter(theoretical_power, netgen)
+ylabel("Actual Net Electricity Generation (MW)");
+xlabel("Predicted Net Electricity Generation (MW)");
+title("Accuracy of Predicted Net Electricity Generation using the Theoretical Power Equation")
+hold on
+plot(netgen, netgen)
+legend("Theoretical Power Prediction", "Actual");
+
