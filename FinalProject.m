@@ -166,15 +166,17 @@ xlabel("Rotor Diameter (m)");
 ylabel("Electricity Generation for Individual Turbines (MW)");
 
 %% Linear Regression for NetGen & Capacity
-model = fitlm(capacity, netgen, "Intercept", false)
-yPred = predict(model, capacity);
+linear_reg = fitlm(capacity, netgen, "Intercept", false)
+yPred = predict(linear_reg, capacity);
 
 %% Plot relationship between NetGen & Capacity
 figure(6); clf
-plot(capacity, netgen, 'o', capacity, yPred, '--');
-xlabel("Installed Capacity");
-ylabel("Net Generation");
-legend();
+plot(capacity, netgen, '.', capacity, yPred, '--');
+eq_text = 'netgen = 0.35476 \times capacity';
+text(0.65, 0.87, eq_text, 'Units', 'normalized', 'FontSize', 12, 'Color', "#A2142F");xlabel("Installed Capacity (MW)");
+ylabel("Net Electricity Generation (MW)");
+legend("Actual", "Linear Regression");
+title("Relationship between Net Electricity Generation and Installed Capacity (MW)")
 
 %% Regression
 variables = [correctMeanWS, mech_rd, mech_hh netgen];
