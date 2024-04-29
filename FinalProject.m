@@ -45,18 +45,13 @@ plotm(plantLat,plantLon,'y.','MarkerSize',10)
 hold on
 plotm(idxLat,idxLon,'r.','MarkerSize',15)
 title("Plant Locations and Wind Speed (10m)")
-%% plot locations
+%% plot net generation at each location by size
 figure(2); clf
 usamap conus
 geoshow('landareas.shp','FaceColor','#77AC30')
-plotm(plantLat,plantLon,'m.','MarkerSize',15)
+scatterm(plantLat,plantLon,netgen,'filled')
 
-% plot max wind speed point in a different color (?)
-
-%plot net generation at each location by size
-%scatterm(plantLat,plantLon,netgen,'filled')
-
-%plot markers in different colors according to generation
+%or plot markers in different colors according to generation
 
 %% Ratio of Capacity and Generation
 ratio = netgen ./ capacity;
@@ -98,16 +93,36 @@ for i = 1:430
     turbineCodes = table2array(turbine_data(:, 4));
     numTurbines(i) = length(find(turbineCodes == plantCode));
 end
+
+dataTable = [plantLat plantLon netgen windSpeed numTurbines];
+
+%% Mechanics
+
+mechanics_rd = table2array(mechanics_data(:, 16));
+mechanics_hh = table2array(mechanics_data(:, 17));
+mechanics_rsa = table2array(mechanics_data(:, 18));
+mechanics_codes = table2array(mechanics_data(:, 5));
+plantCodes = table2array(plant_data(:, 1));
+
+mech_rd = NaN(length(plantCodes),1);
+mech_hh = NaN(length(plantCodes),1);
+
+for i = 1:length(plantCodes)
+    index = find(plantCodes(i) == mechanics_codes);
+    mech_rd(i) = nanmean(mechanics_rd(index));
+    mech_hh(i) = nanmean(mechanics_hh(index));
+    mech_rsa(i) = nanmean(mechanics_rsa(index));
+end
+
 %% meanWS correction
 correctMeanWS = meanWS .* (mech_hh/10).^0.143;
 
-figure(7); clf
+figure(6); clf
 scatter(meanWS, correctMeanWS)
 hold on
 plot(meanWS, meanWS)
 xlabel("Actual meanWS");
 ylabel("correctMeanWS");
-dataTable = [plantLat plantLon netgen windSpeed numTurbines];
 
 %% Linear Regression for TurbGen & WS
 %single Turbine
@@ -149,26 +164,6 @@ usamap conus
 geoshow('landareas.shp','FaceColor','#77AC30')
 plotm(idxLat,idxLon,'m.','MarkerSize',15)
 
-%% Mechanics
-
-mechanics_rd = table2array(mechanics_data(:, 16));
-mechanics_hh = table2array(mechanics_data(:, 17));
-mechanics_rsa = table2array(mechanics_data(:, 18));
-mechanics_codes = table2array(mechanics_data(:, 5));
-plantCodes = table2array(plant_data(:, 1));
-
-mech_rd = NaN(length(plantCodes),1);
-mech_hh = NaN(length(plantCodes),1);
-
-for i = 1:length(plantCodes)
-    index = find(plantCodes(i) == mechanics_codes);
-    mech_rd(i) = nanmean(mechanics_rd(index));
-    mech_hh(i) = nanmean(mechanics_hh(index));
-    mech_rsa(i) = nanmean(mechanics_rsa(index));
-end
-
-finalTable = [plantLat plantLon netgen windSpeed numTurbines mech_rd mech_hh mech_rsa'];
-
 %% Regression
 variables = [correctMeanWS, mech_rd, mech_hh netgen];
 table = rmmissing(variables);
@@ -178,23 +173,18 @@ NN = fitrnet(predictors, y, 'Standardize',true, "Activations", 'relu',  'Initial
 yPred = predict(NN, predictors);
 
 %% Plot relationship
-figure(6); clf
+figure(7); clf
 scatter(y, yPred)
 hold on
 plot(y,y)
 xlabel("Actual");
 ylabel("Prediction");
 
-%% Plot
-figure(7); clf
-scatter3(table(:,2), y, yPred)
-%plot(table(:, 3), y, 'o', table(:, 3), yPred, "x");
-
 %% Theoretical Power (Equation)
 %standard density of air = 1.225
 meanWScubed = meanWS.^3;
 theoretical_power = (1/2 * 1.225 * mech_rsa') .* meanWScubed;
-figure(7); clf
+figure(8); clf
 scatter(netgen, theoretical_power)
 xlabel("Actual");
 ylabel("Prediction");
