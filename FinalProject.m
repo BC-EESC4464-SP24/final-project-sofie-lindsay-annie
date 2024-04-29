@@ -185,14 +185,23 @@ predictors = table(:, 1:3);
 y = table(:, 4);
 NN = fitrnet(predictors, y, 'Standardize',true, "Activations", 'relu',  'InitialStepSize','auto', 'LayerSizes',[115 100 75 50 25], 'Lambda',1e-4)
 yPred = predict(NN, predictors);
+%%
+% Calculate Mean Absolute Error (MAE)
+MAE = mean(abs(y - yPred));
+num2str(MAE)
 
 %% Plot relationship
 figure(7); clf
 scatter(y, yPred)
 hold on
 plot(y,y)
-xlabel("Actual");
-ylabel("Prediction");
+legend("Actual", "Neural Network Prediction");
+xlabel("Actual Net Electricity Generation (MW)");
+ylabel("Predicted Net Electricity Generation (MW)");
+title("Accuracy of Predicted Net Electricity Generation using a Neural Network")
+eq_text = "Mean Absolute Error: " + num2str(MAE);
+text(0.7, 0.9, eq_text, 'Units', 'normalized', 'FontSize', 12, 'Color', "#A2142F");
+
 
 %% Theoretical Power (Equation)
 %standard density of air = 1.225
