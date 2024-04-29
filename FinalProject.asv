@@ -16,7 +16,7 @@ mechanics_data = readtable("uswtdb.csv");
 %read in wind components
 windu = ncread(filename,'u10');
 windv = ncread(filename,'v10');
-%% Calculate wind speed
+%% Calculate wind speed at 10 meters
 %lon x lat x day
 windComponents = sqrt((windu .* windu) + (windv .* windv));
 windLat = double(ncread(filename,'latitude'));
@@ -31,12 +31,12 @@ plantLon = table2array(plant_data(:,2));
 netgen = table2array(plant_data(:,6));
 capacity = table2array(plant_data(:,4));
 
-%% Create maps
+%% plot windspeed as background
 figure(1); clf
-usamap conus
+usamap([25 50], [-125 -65]) 
 geoshow('landareas.shp')
-%plot windspeed as background
-step = 50;
+
+step = 5;
 bar = colorbar;
 title(bar, "Wind Speed (m/s)")
 contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
@@ -111,6 +111,8 @@ meanWS = mean(windSpeed, 2);
 %correction
 correctMeanWS = meanWS .* (mech_hh/10).^0.143;
 
+windSpeed = [windSpeed correctMeanWS];
+
 %plot the difference
 figure(3); clf
 scatter(meanWS, correctMeanWS)
@@ -119,7 +121,7 @@ plot(meanWS, meanWS)
 xlabel("Actual meanWS");
 ylabel("correctMeanWS");
 
-dataTable = [plantLat plantLon netgen correctMeanWS numTurbines];
+dataTable = [plantLat plantLon netgen windSpeed numTurbines];
 
 %% Linear Regression for TurbGen & WS
 %single Turbine
@@ -155,12 +157,6 @@ indices = dataTable(row, 1:2);
 idxLat = indices(1);
 idxLon = indices(2);
 
-%% Plot Max Wind Speed Location
-figure(6); clf
-usamap conus
-geoshow('landareas.shp','FaceColor','#77AC30')
-plotm(idxLat,idxLon,'m.','MarkerSize',15)
-
 %% Regression
 variables = [correctMeanWS, mech_rd, mech_hh netgen];
 table = rmmissing(variables);
@@ -179,9 +175,9 @@ ylabel("Prediction");
 
 %% Theoretical Power (Equation)
 %standard density of air = 1.225
-meanWScubed = meanWS.^3;
+meanWScubed = correctMeanWS.^3;
 theoretical_power = (1/2 * 1.225 * mech_rsa') .* meanWScubed;
 figure(8); clf
 scatter(netgen, theoretical_power)
-xlabel("Actual");
-ylabel("Prediction");
+xlabel("netgen");
+ylabel("theoretical_power");

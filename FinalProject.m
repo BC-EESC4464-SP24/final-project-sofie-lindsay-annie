@@ -33,10 +33,10 @@ capacity = table2array(plant_data(:,4));
 
 %% plot windspeed as background
 figure(1); clf
-usamap conus
+usamap([25 50], [-125 -65]) 
 geoshow('landareas.shp')
 
-step = 50;
+step = 5;
 bar = colorbar;
 title(bar, "Wind Speed (m/s)")
 contourfm(windLat(1:step:end), windLon(1:step:end),totalWindSpeed(1:step:end,1:step:end,1), 10)
