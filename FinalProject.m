@@ -46,12 +46,22 @@ hold on
 plotm(idxLat,idxLon,'r.','MarkerSize',15)
 title("Plant Locations and Wind Speed (10m)")
 %% plot net generation at each location by size
-%figure(2); clf
-%usamap conus
-% geoshow('landareas.shp','FaceColor','#77AC30')
-% scatterm(plantLat,plantLon,netgen,'filled')
+figure(2); clf
+usamap([25 50], [-125 -65]) 
+geoshow('landareas.shp','FaceColor','#77AC30')
+scatterm(plantLat,plantLon,netgen,'filled')
 
 %or plot markers in different colors according to generation
+figure(3); clf
+usamap([25 50], [-125 -65]) 
+geoshow('landareas.shp','FaceColor','#77AC30')
+
+% Plot markers with colors according to generation
+scatterm(plantLat, plantLon, [], netgen, 'filled') 
+
+colorbar; % Add colorbar
+title('Net Generation at Each Location') 
+
 
 %% Ratio of Capacity and Generation
 ratio = netgen ./ capacity;
