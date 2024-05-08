@@ -38,7 +38,7 @@ idxMaxRatio = find(ratio == max(ratio));
 ratioTable = [plantLat plantLon ratio];
 maxLocation = ratioTable(215, :);
 
-%% Plot Ratio
+%% Plot Ratio (Experimental)
 figure(1); clf
 scatter3(plantLat, plantLon, ratio)
 xlabel("Latitude")
@@ -126,7 +126,11 @@ title("Plant Locations and Wind Speed (10m)")
 %% plot markers in different colors according to generation
 figure(4); clf
 usamap([25 50], [-125 -65]) 
-geoshow('landareas.shp','FaceColor','#77AC30')
+geoshow('landareas.shp','FaceColor',[0.9 0.9 0.9])
+
+% Set the ocean color to blue
+setm(gca,'FFaceColor', [0.7 0.85 1])
+
 scatterm(plantLat, plantLon, [], netgen, 'filled') 
 bar = colorbar;
 title(bar, "MW")
@@ -178,17 +182,16 @@ ylabel("Net Electricity Generation (MW)");
 legend("Actual", "Linear Regression");
 title("Relationship between Net Electricity Generation and Installed Capacity (MW)")
 
-%% Regression
+%% Neural Network
 variables = [correctMeanWS, mech_rd, mech_hh netgen];
 table = rmmissing(variables);
 predictors = table(:, 1:3);
 y = table(:, 4);
 NN = fitrnet(predictors, y, 'Standardize',true, "Activations", 'relu',  'InitialStepSize','auto', 'LayerSizes',[115 100 75 50 25], 'Lambda',1e-4)
 yPred = predict(NN, predictors);
-%%
-% Calculate Mean Absolute Error (MAE)
+%% Calculate Mean Absolute Error (MAE)
 MAE = mean(abs(y - yPred));
-num2str(MAE)
+num2str(MAE);
 
 %% Plot relationship
 figure(7); clf
@@ -202,8 +205,9 @@ title("Accuracy of Predicted Net Electricity Generation using a Neural Network")
 eq_text = "Mean Absolute Error: " + num2str(MAE);
 text(0.7, 0.9, eq_text, 'Units', 'normalized', 'FontSize', 12, 'Color', "#A2142F");
 
-%%
-figure(7); clf
+%% Compare to Theoretical Power (Experimental)
+
+figure(8); clf
 subplot(1, 2, 1)
 scatter(yPred, y)
 hold on
